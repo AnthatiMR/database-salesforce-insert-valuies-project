@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_57c86a64_8666_4c4c_bcf9_52aa760c44a0_Output_Variables_AFdatabase = Array<{|  "worker name": String,   id: Number,   department: String,   age: Number,   branch: String,   mobilenumber: String,   salary: String|}>
+

@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:sockets="http://www.mulesoft.org/schema/mule/sockets" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/sockets http://www.mulesoft.org/schema/mule/sockets/current/mule-sockets.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ef9b372a-af97-4736-a9ff-46a783a50677" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="7c1b285c-41fe-45b1-9cf5-f6ab8cda199b" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="Masthan@123" database="data" />
+	</db:config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="ef458a23-c958-4727-9e5f-6b547d5cb572" >
+		<salesforce:basic-connection username="anthatimasthan785@gmail.com" password="Masthan@123" securityToken=" M58XnoGMF7EIdwcKDslQ3xbW" />
+	</salesforce:sfdc-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="f0958e5d-3a20-4004-bc0a-1ba18aeb320c" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<flow name="databasse-insertvaluesFlow" doc:id="0853987e-9ef9-4383-befe-a135f1f57d08" >
+		<http:listener doc:name="Listener" doc:id="cd25c0b1-2538-4e35-bf7e-23471da7b655" config-ref="HTTP_Listener_config" path="/sql"/>
+		<logger level="INFO" doc:name="Logger" doc:id="3bcdc457-9900-4803-967f-b91ce531f95c" message='#["/n"];;;;;#[payload]'/>
+		<try doc:name="Try" doc:id="ba13b608-f5a9-4195-b4c1-2495d8c7e1ef" >
+			<flow-ref doc:name="databasse-insertvaluesSub_Flow" doc:id="896e7bc0-4bff-45b1-9be4-3a3bbf121ff8" name="databasse-insertvaluesSub_Flow" />
+			<error-handler>
+				<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="7a36a27e-30bc-4f45-9a68-e3c5d8704b81" >
+					<ee:transform doc:name="Copy_of_Transform Message" doc:id="8aa059a3-6b73-487a-9559-21b2722a0f37" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errortypesf:error.errorType,
+	messagesf:error.errorMessage,
+	description:error.detailedDescription
+}]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-propagate>
+			</error-handler>
+		</try>
+		<db:select doc:name="Select" doc:id="8065e971-16c5-4f6b-8157-9fad2ce0e777" config-ref="Database_Config">
+			<db:sql><![CDATA[SELECT * FROM data.`work details`;]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="23a069ec-5e64-40d3-89ec-7353013f0f46" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="d6345585-5666-438b-b74c-982f93ef285d" message='#["/n"];;;;;#[payload]'/>
+		<flow-ref doc:name="salesforce-insertvalues-subFlow" doc:id="59fb342e-9ef2-4776-bf9b-cc9e9d4909da" name="salesforce-insertvalues-subFlow"/>
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="1c962709-f3b7-4417-b052-b9df346886a4" type="SALESFORCE:INVALID_INPUT, SALESFORCE:INVALID_RESPONSE, SALESFORCE:NOT_FOUND, SALESFORCE:TIMEOUT, EXPRESSION">
+				<logger level="INFO" doc:name="Logger" doc:id="8bc986b9-7cb8-4edd-ad6f-f0c1a18dd1f9" message='#["/n"];;;;;#[payload]'/>
+				<ee:transform doc:name="salesforce-eror" doc:id="bf4466ab-cec0-446f-b7ca-dc2cab1d0c65" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errortypesf:error.errorType,
+	messagesf:error.errorMessage,
+	description:error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-continue>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="a9483e7f-0d48-4824-8b30-85f089f40c4e" type="DB:BAD_SQL_SYNTAX, DB:CONNECTIVITY, DB:QUERY_EXECUTION, DB:RETRY_EXHAUSTED">
+				<logger level="INFO" doc:name="Logger" doc:id="38daafdc-4c47-4b5d-8f68-b082b4d9f2f0" message=";;;;;;;;;logger;;;;;;"/>
+				<ee:transform doc:name="database-error" doc:id="af0232fa-7400-4a0f-859d-33234e3a7e51">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errortype:error.errorType,
+	message:error.errorMessage,
+	description:error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="147d2b0f-4694-4627-92cc-fcbf40981a3e" message=";;;;;;logger;;;;;;;;;;"/>
+			</on-error-propagate>
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="f4f9dc21-8861-4925-892e-837779f61d2a" type="ANY">
+				<ee:transform doc:name="Transform Message" doc:id="a01a3ac1-6876-4b58-8d5a-99f430d8454f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	errortypeany:error.errorType,
+	message:error.errorMessage,
+	description:error.detailedDescription
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<sub-flow name="databasse-insertvaluesSub_Flow" doc:id="81b4aa9c-446b-4114-8128-08c22a6accaa" >
+		<logger level="INFO" doc:name="insert-logger" doc:id="36beeb64-1647-478c-a504-f35dea83587b" message='#["/n"];;;;;#[payload]'/>
+		<ee:transform doc:name="Transform Message" doc:id="90a8a1fb-b2b7-4c58-817c-a1cf373e8669">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map(item)->
+{
+	Name: item.name,
+	Id: item.id,
+	Dpartment: item.department,
+	Age: item.age,
+	branch: item.branch,
+	mobilenumber: item.mobile,
+	Salary: item.salary
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:bulk-insert doc:name="Bulk insert" doc:id="c3de2521-644d-4b41-ab11-794e62cbdf6f" config-ref="Database_Config">
+			<db:bulk-input-parameters ><![CDATA[#[payload map((item1) ->{
+	InpName: item1.Name,
+	InpId : item1.Id,
+	InpDpartment : item1.Dpartment,
+	InpAge : item1.Age,
+	Inpbranch : item1.branch,
+	Inpmobilenumber : item1.mobilenumber,
+	InpSalary : item1.Salary
+	
+})]]]></db:bulk-input-parameters>
+			<db:sql ><![CDATA[INSERT INTO `data`.`work details`
+(`workername`,
+`id`,
+`department`,
+`age`,
+`branch`,
+`mobilenumber`,
+`salary`)
+VALUES
+(:InpName, :InpId, :InpDpartment, :InpAge, :Inpbranch, :Inpmobilenumber, :InpSalary);]]></db:sql>
+		</db:bulk-insert>
+		<logger level="INFO" doc:name="database-afterlogger" doc:id="d337e1fc-9969-42df-93cc-3a65e99fe113" message='#["/n"];;;;;#[payload]'/>
+	</sub-flow>
+	<sub-flow name="salesforce-insertvalues-subFlow" doc:id="57c86a64-8666-4c4c-bcf9-52aa760c44a0" >
+		<logger level="INFO" doc:name="beforesalesforce-logger" doc:id="8d6e1ebe-87e7-452d-88ef-2aa642f895c4" message='#["/n"];;;;;#[payload]'/>
+		<ee:transform doc:name="Transform Message" doc:id="9c835158-56d1-42c1-a12d-5953017eea30" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload map(item1) -> {
+	EmployName__c:item1.workername,
+	EmpID__c: item1.id,
+	EmpSalary__c: item1.salary,
+	MobileNumber__c: item1.mobilenumber
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:upsert objectType="Employedetails__c" externalIdFieldName="EmpID__c" doc:name="Upsert" doc:id="cd61ff8c-b6e8-4347-829f-0668bdecf64d" config-ref="Salesforce_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="27f19847-be99-43f4-932e-acbeacccdd24" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="aftersales-logger" doc:id="9d106dcc-0485-412b-9050-5e52ac3e020d" message='#["/n"];;;;;#[payload]'/>
+	</sub-flow>
+</mule>
